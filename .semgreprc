@@ -1,0 +1,7 @@
+# Semgrep configuration for security scanning
+# Used for competition compliance security checks
+
+rules:
+  - php-security
+  - owasp-top-ten
+  - security-audit

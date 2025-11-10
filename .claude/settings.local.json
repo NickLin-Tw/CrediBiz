@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(chmod:*)",
+      "Bash(composer update:*)",
+      "Bash(npm install:*)",
+      "Bash(php:*)",
+      "Bash(composer security:deps:*)",
+      "Bash(composer security:code:*)",
+      "Bash(npm run license:check:*)",
+      "Bash(npm run security:check:*)",
+      "Bash(composer compliance:check:*)",
+      "Bash(DB_CONNECTION=pgsql php artisan db:show)",
+      "Read(//Users/junlonglin/Library/**)",
+      "Bash(export DB_CONNECTION=pgsql)",
+      "Bash(md5:*)",
+      "Read(//Users/junlonglin/**)",
+      "Bash(composer:*)",
+      "WebFetch(domain:issuer-sandbox.wallet.gov.tw)",
+      "WebFetch(domain:verifier-sandbox.wallet.gov.tw)",
+      "Bash(npm run build:*)",
+      "Bash(curl -X POST http://127.0.0.1:8000/api/test/vc/issue )",
+      "Bash(curl -X POST http://credibiz.test/api/test/vc/issue -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"\"\"\"template\"\"\"\":\"\"\"\"00000000_roc_did_vc\"\"\"\",\"\"\"\"data\"\"\"\":{\"\"\"\"name\"\"\"\":\"\"\"\"測試\"\"\"\",\"\"\"\"id_number\"\"\"\":\"\"\"\"A123456789\"\"\"\",\"\"\"\"roc_birthday\"\"\"\":\"\"\"\"0850315\"\"\"\",\"\"\"\"registered_address\"\"\"\":\"\"\"\"台北市大安區\"\"\"\"}}')",
+      "Bash(curl -X POST \"http://credibiz.test/api/test/vc/issue\" -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"\"\"\"template\"\"\"\":\"\"\"\"00000000_roc_did_vc\"\"\"\",\"\"\"\"data\"\"\"\":{\"\"\"\"name\"\"\"\":\"\"\"\"測試\"\"\"\",\"\"\"\"id_number\"\"\"\":\"\"\"\"A123456789\"\"\"\",\"\"\"\"roc_birthday\"\"\"\":\"\"\"\"0850315\"\"\"\",\"\"\"\"registered_address\"\"\"\":\"\"\"\"台北市大安區\"\"\"\"}}')",
+      "Bash(curl -X POST \"http://credibiz.test/api/test/vc/issue\" -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"\"vcUid\"\":\"\"00000000_roc_did_vc\"\",\"\"fields\"\":{\"\"name\"\":\"\"測試\"\",\"\"id_number\"\":\"\"A123456789\"\",\"\"roc_birthday\"\":\"\"0850315\"\",\"\"registered_address\"\":\"\"台北市大安區\"\"}}')",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
