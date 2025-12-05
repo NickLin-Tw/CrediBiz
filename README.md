@@ -505,7 +505,7 @@ A: 請參考 `app/Http/Controllers/` 中的 VC 控制器實作，並在前端新
 如有任何問題或建議，歡迎透過以下方式聯繫：
 
 - **Issue Tracker**: GitHub Issues
-- **Email**: your-email@example.com
+- **Email**: nick20843@gmail.com
 
 ---
 
