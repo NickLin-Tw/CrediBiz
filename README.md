@@ -2,7 +2,7 @@
 
 > 基於數位憑證（VC/VP）的中小企業人資管理系統
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Laravel](https://img.shields.io/badge/Laravel-12.37.0-red.svg)](https://laravel.com)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3.5.22-green.svg)](https://vuejs.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18.0.2-blue.svg)](https://www.postgresql.org)
@@ -121,7 +121,7 @@
 ### 1. 複製專案
 
 ```bash
-git clone https://bitbucket.org/你的帳號/credibiz.git
+git clone https://github.com/your-username/credibiz.git
 cd credibiz
 ```
 
@@ -330,7 +330,7 @@ npm run license:check           # 檢查套件授權
 
 ✅ **無中高嚴重性漏洞**
 ✅ **完整 SBOM（CycloneDX 1.4 格式）**
-✅ **授權合規（MIT License）**
+✅ **授權合規（Apache 2.0 License）**
 ✅ **靜態程式碼分析通過**
 
 所有合規報告儲存於 `compliance/` 目錄。
@@ -452,13 +452,29 @@ npm run build
 - **競賽名稱**: 數位憑證場景創新賽
 - **場景類別**: 中小企業人資管理
 - **技術整合**: TW-DIW (Taiwan Digital Identity Wallet)
-- **專案授權**: MIT License
+- **專案授權**: Apache License 2.0
 
 ---
 
 ## 📝 授權
 
-本專案採用 [MIT License](https://opensource.org/licenses/MIT) 授權。
+本專案採用 [Apache License 2.0](https://opensource.org/licenses/Apache-2.0) 授權。
+
+```
+Copyright 2025 CrediBiz Team
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
 
 ---
 
@@ -488,7 +504,7 @@ A: 請參考 `app/Http/Controllers/` 中的 VC 控制器實作，並在前端新
 
 如有任何問題或建議，歡迎透過以下方式聯繫：
 
-- **Issue Tracker**: [BitBucket Issues](https://bitbucket.org/你的帳號/credibiz/issues)
+- **Issue Tracker**: GitHub Issues
 - **Email**: your-email@example.com
 
 ---

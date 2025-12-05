@@ -600,8 +600,7 @@
                             prominent
                             class="mt-6"
                         >
-                            <v-alert-title class="d-flex align-center">
-                                <v-icon size="large" class="mr-2">mdi-check-circle</v-icon>
+                            <v-alert-title>
                                 必要 VC 已全部領取完成
                             </v-alert-title>
                             <div class="mt-2 mb-4">
@@ -647,6 +646,7 @@
                         auto-generate
                         @success="handleVCSuccess"
                         @error="handleVCError"
+                        @auto-close="closeVCDialog"
                     />
                 </v-card-text>
             </v-card>
@@ -1166,7 +1166,8 @@ const issueMedicalCert = () => {
 
 // 處理 VC 發行成功
 const handleVCSuccess = ({ cid, transactionId }) => {
-    showVCDialog.value = false
+    // 不自動關閉對話框，讓用戶看到成功訊息後手動關閉
+    // showVCDialog.value = false
 
     // 呼叫對應的 onSuccess 回調
     if (currentVCConfig.value?.onSuccess) {

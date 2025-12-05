@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\EmployeeLoginLog;
+use App\Models\ActivityLog;
 use App\Services\TWDIWVerifierService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -105,6 +106,18 @@ class AuthController extends Controller
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
+
+            // 記錄 VP 驗證活動日誌
+            ActivityLog::logVPVerification(
+                transactionId: $vpTransactionId,
+                reason: '員工使用 VC 登入系統',
+                success: true,
+                employeeId: $employee->employee_id,
+                metadata: [
+                    'login' => true,
+                    'ip_address' => $request->ip(),
+                ]
+            );
 
             // 刪除舊的 token（確保同一時間只有一個有效 token）
             $employee->tokens()->delete();

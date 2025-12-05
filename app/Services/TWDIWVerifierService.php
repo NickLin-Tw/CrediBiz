@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ApiLog;
 use App\Models\VPVerificationResult;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
@@ -32,27 +33,75 @@ class TWDIWVerifierService
      */
     public function generateVPQRCode(string $ref, string $transactionId): array
     {
-        $response = Http::withHeaders([
+        $endpoint = '/api/oidvp/qrcode';
+        $url = "{$this->baseUrl}{$endpoint}";
+        $headers = [
             'Access-Token' => $this->accessToken,
-        ])->get("{$this->baseUrl}/api/oidvp/qrcode", [
+        ];
+        $queryParams = [
             'ref' => $ref,
             'transactionId' => $transactionId,
-        ]);
-
-        if ($response->failed()) {
-            throw new \Exception(
-                'TW-DIW Verifier API 呼叫失敗: ' .
-                ($response->json()['message'] ?? $response->body())
-            );
-        }
-
-        $data = $response->json();
-
-        return [
-            'transactionId' => $transactionId,
-            'qrCode' => $data['qrcodeImage'] ?? null,
-            'authUri' => $data['authUri'] ?? null,
         ];
+
+        $startTime = microtime(true);
+
+        try {
+            $response = Http::withHeaders($headers)->get($url, $queryParams);
+
+            $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+            // 記錄 API Log
+            ApiLog::logApiCall([
+                'service' => 'verifier',
+                'method' => 'GET',
+                'endpoint' => $endpoint,
+                'full_url' => $url . '?' . http_build_query($queryParams),
+                'request_headers' => $this->sanitizeHeaders($headers),
+                'request_body' => $queryParams,
+                'response_status' => $response->status(),
+                'response_headers' => $response->headers(),
+                'response_body' => $response->json(),
+                'duration_ms' => $duration,
+                'success' => $response->successful(),
+                'error_message' => $response->failed() ? ($response->json()['message'] ?? $response->body()) : null,
+                'transaction_id' => $transactionId,
+            ]);
+
+            if ($response->failed()) {
+                throw new \Exception(
+                    'TW-DIW Verifier API 呼叫失敗: ' .
+                    ($response->json()['message'] ?? $response->body())
+                );
+            }
+
+            $data = $response->json();
+
+            return [
+                'transactionId' => $transactionId,
+                'qrCode' => $data['qrcodeImage'] ?? null,
+                'authUri' => $data['authUri'] ?? null,
+            ];
+        } catch (\Exception $e) {
+            $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+            ApiLog::logApiCall([
+                'service' => 'verifier',
+                'method' => 'GET',
+                'endpoint' => $endpoint,
+                'full_url' => $url . '?' . http_build_query($queryParams),
+                'request_headers' => $this->sanitizeHeaders($headers),
+                'request_body' => $queryParams,
+                'response_status' => null,
+                'response_headers' => null,
+                'response_body' => null,
+                'duration_ms' => $duration,
+                'success' => false,
+                'error_message' => $e->getMessage(),
+                'transaction_id' => $transactionId,
+            ]);
+
+            throw $e;
+        }
     }
 
     /**
@@ -66,51 +115,130 @@ class TWDIWVerifierService
      */
     public function getVPResult(string $transactionId): ?array
     {
-        $response = Http::withHeaders([
+        $endpoint = '/api/oidvp/result';
+        $url = "{$this->baseUrl}{$endpoint}";
+        $headers = [
             'Access-Token' => $this->accessToken,
             'Content-Type' => 'application/json',
-        ])->post("{$this->baseUrl}/api/oidvp/result", [
+        ];
+        $payload = [
             'transactionId' => $transactionId,
-        ]);
+        ];
 
-        if ($response->failed()) {
-            $error = $response->json();
+        $startTime = microtime(true);
 
-            // 如果是「verify result not found」，表示用戶還沒完成驗證，回傳 null
-            if (isset($error['params'])) {
-                $params = is_string($error['params']) ? json_decode($error['params'], true) : $error['params'];
-                if (isset($params['message']) && $params['message'] === 'verify result not found') {
-                    return null;
+        try {
+            $response = Http::withHeaders($headers)->post($url, $payload);
+
+            $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+            if ($response->failed()) {
+                $error = $response->json();
+
+                // 記錄 API Log
+                ApiLog::logApiCall([
+                    'service' => 'verifier',
+                    'method' => 'POST',
+                    'endpoint' => $endpoint,
+                    'full_url' => $url,
+                    'request_headers' => $this->sanitizeHeaders($headers),
+                    'request_body' => $payload,
+                    'response_status' => $response->status(),
+                    'response_headers' => $response->headers(),
+                    'response_body' => $error,
+                    'duration_ms' => $duration,
+                    'success' => false,
+                    'error_message' => $error['message'] ?? $response->body(),
+                    'transaction_id' => $transactionId,
+                ]);
+
+                // 如果是「verify result not found」，表示用戶還沒完成驗證，回傳 null
+                if (isset($error['params'])) {
+                    $params = is_string($error['params']) ? json_decode($error['params'], true) : $error['params'];
+                    if (isset($params['message']) && $params['message'] === 'verify result not found') {
+                        return null;
+                    }
                 }
+
+                // 其他錯誤才拋出異常
+                throw new \Exception(
+                    '查詢 VP 驗證結果失敗: ' .
+                    ($error['message'] ?? $response->body())
+                );
             }
 
-            // 其他錯誤才拋出異常
-            throw new \Exception(
-                '查詢 VP 驗證結果失敗: ' .
-                ($error['message'] ?? $response->body())
+            $data = $response->json();
+
+            // 記錄成功的 API Log
+            ApiLog::logApiCall([
+                'service' => 'verifier',
+                'method' => 'POST',
+                'endpoint' => $endpoint,
+                'full_url' => $url,
+                'request_headers' => $this->sanitizeHeaders($headers),
+                'request_body' => $payload,
+                'response_status' => $response->status(),
+                'response_headers' => $response->headers(),
+                'response_body' => $data,
+                'duration_ms' => $duration,
+                'success' => true,
+                'error_message' => null,
+                'transaction_id' => $transactionId,
+            ]);
+
+            // 保存到資料庫（TW-DIW 查詢一次後會刪除資料）
+            VPVerificationResult::updateOrCreate(
+                ['transaction_id' => $transactionId],
+                [
+                    'verify_result' => $data['verifyResult'] ?? false,
+                    'result_description' => $data['resultDescription'] ?? null,
+                    'credentials' => $data['data'] ?? [],
+                    'full_response' => $data,
+                    'verified_at' => Carbon::now(),
+                ]
             );
+
+            return [
+                'verifyResult' => $data['verifyResult'] ?? null,
+                'resultDescription' => $data['resultDescription'] ?? null,
+                'data' => $data['data'] ?? null,
+                'fullResponse' => $data,
+            ];
+        } catch (\Exception $e) {
+            // 如果前面沒記錄過，這裡記錄一次
+            if (!isset($error)) {
+                $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+                ApiLog::logApiCall([
+                    'service' => 'verifier',
+                    'method' => 'POST',
+                    'endpoint' => $endpoint,
+                    'full_url' => $url,
+                    'request_headers' => $this->sanitizeHeaders($headers),
+                    'request_body' => $payload,
+                    'response_status' => null,
+                    'response_headers' => null,
+                    'response_body' => null,
+                    'duration_ms' => $duration,
+                    'success' => false,
+                    'error_message' => $e->getMessage(),
+                    'transaction_id' => $transactionId,
+                ]);
+            }
+
+            throw $e;
         }
+    }
 
-        $data = $response->json();
-
-        // 保存到資料庫（TW-DIW 查詢一次後會刪除資料）
-        VPVerificationResult::updateOrCreate(
-            ['transaction_id' => $transactionId],
-            [
-                'verify_result' => $data['verifyResult'] ?? false,
-                'result_description' => $data['resultDescription'] ?? null,
-                'credentials' => $data['data'] ?? [],
-                'full_response' => $data,
-                'verified_at' => Carbon::now(),
-            ]
-        );
-
-        return [
-            'verifyResult' => $data['verifyResult'] ?? null,
-            'resultDescription' => $data['resultDescription'] ?? null,
-            'data' => $data['data'] ?? null,
-            'fullResponse' => $data,
-        ];
+    /**
+     * 移除敏感資訊（如 Access-Token）
+     */
+    protected function sanitizeHeaders(array $headers): array
+    {
+        if (isset($headers['Access-Token'])) {
+            $headers['Access-Token'] = '***REDACTED***';
+        }
+        return $headers;
     }
 
     /**

@@ -105,7 +105,18 @@ const props = defineProps({
     // VP reference code (e.g., "00000000_vp_recruitment")
     vpRef: {
         type: String,
-        required: true
+        required: false,
+        default: ''
+    },
+    // API endpoint for generating VP QR code
+    apiEndpoint: {
+        type: String,
+        default: '/api/test/vp/generate'
+    },
+    // API endpoint for checking VP status
+    statusEndpoint: {
+        type: String,
+        default: '/api/test/vp/result'
     },
     // Success message
     successMessage: {
@@ -164,17 +175,32 @@ const start = async () => {
         // 產生唯一的 transaction ID
         transactionId.value = generateUUID()
 
-        // 呼叫 VP 驗證 API
-        const response = await fetch('/api/test/vp/generate', {
+        // 準備請求體
+        const requestBody = {
+            transactionId: transactionId.value
+        }
+
+        // 如果有 vpRef，添加到請求體中
+        if (props.vpRef) {
+            requestBody.ref = props.vpRef
+        }
+
+        // 獲取 auth token（如果需要）
+        const token = localStorage.getItem('auth_token')
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`
+        }
+
+        // 呼叫 VP 驗證 API（使用傳入的 endpoint 或預設值）
+        const response = await fetch(props.apiEndpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-            },
-            body: JSON.stringify({
-                ref: props.vpRef,
-                transactionId: transactionId.value
-            })
+            headers,
+            body: JSON.stringify(requestBody)
         })
 
         const data = await response.json()
@@ -183,8 +209,8 @@ const start = async () => {
             throw new Error(data.message || '產生 QR Code 失敗')
         }
 
-        qrCode.value = data.qrCode
-        deepLink.value = data.authUri || null
+        qrCode.value = data.qrCode || data.qr_code
+        deepLink.value = data.authUri || data.deep_link || null
 
         // 開始倒數計時
         countdown.value = props.timeout
@@ -227,12 +253,20 @@ const startPolling = () => {
     clearInterval(pollingInterval)
     pollingInterval = setInterval(async () => {
         try {
-            const response = await fetch('/api/test/vp/result', {
+            // 獲取 auth token（如果需要）
+            const token = localStorage.getItem('auth_token')
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            }
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`
+            }
+
+            const response = await fetch(props.statusEndpoint, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                },
+                headers,
                 body: JSON.stringify({
                     transactionId: transactionId.value
                 })

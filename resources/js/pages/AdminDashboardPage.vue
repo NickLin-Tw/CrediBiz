@@ -51,6 +51,82 @@
                     </v-col>
                 </v-row>
 
+                <v-row class="mt-3">
+                    <v-col cols="12" md="3">
+                        <v-card elevation="4" rounded="lg">
+                            <v-card-text class="text-center">
+                                <v-icon size="48" color="deep-purple">mdi-medical-bag</v-icon>
+                                <div class="text-h4 mt-2">{{ stats.totalMedicalLeaves }}</div>
+                                <div class="text-caption text-medium-emphasis">病假申請數</div>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                </v-row>
+
+                <!-- 快速導航 -->
+                <v-row class="mt-4">
+                    <v-col cols="12">
+                        <v-card elevation="3" rounded="lg" color="blue-grey-lighten-5">
+                            <v-card-title class="text-h6">
+                                <v-icon class="mr-2">mdi-rocket-launch</v-icon>
+                                快速導航
+                            </v-card-title>
+                            <v-card-text>
+                                <v-row>
+                                    <v-col cols="12" md="4">
+                                        <v-btn
+                                            block
+                                            size="large"
+                                            color="primary"
+                                            variant="elevated"
+                                            @click="$router.push({ name: 'AdminEmployees' })"
+                                        >
+                                            <v-icon start>mdi-account-group</v-icon>
+                                            員工管理
+                                        </v-btn>
+                                    </v-col>
+                                    <v-col cols="12" md="4">
+                                        <v-btn
+                                            block
+                                            size="large"
+                                            color="deep-purple"
+                                            variant="elevated"
+                                            @click="$router.push({ name: 'AdminMedicalLeaves' })"
+                                        >
+                                            <v-icon start>mdi-medical-bag</v-icon>
+                                            病假審核
+                                        </v-btn>
+                                    </v-col>
+                                    <v-col cols="12" md="4">
+                                        <v-btn
+                                            block
+                                            size="large"
+                                            color="orange"
+                                            variant="elevated"
+                                            @click="$router.push({ name: 'AdminApiLogs' })"
+                                        >
+                                            <v-icon start>mdi-api</v-icon>
+                                            API Logs
+                                        </v-btn>
+                                    </v-col>
+                                    <v-col cols="12" md="4">
+                                        <v-btn
+                                            block
+                                            size="large"
+                                            color="teal"
+                                            variant="elevated"
+                                            @click="$router.push({ name: 'AdminVisitorParking' })"
+                                        >
+                                            <v-icon start>mdi-car-parking-lights</v-icon>
+                                            訪客停車證審核
+                                        </v-btn>
+                                    </v-col>
+                                </v-row>
+                            </v-card-text>
+                        </v-card>
+                    </v-col>
+                </v-row>
+
                 <!-- Tab 選單 -->
                 <v-card class="mt-6" elevation="4" rounded="lg">
                     <v-tabs v-model="currentTab" bg-color="primary">
@@ -73,6 +149,18 @@
                         <v-tab value="vc-status-logs">
                             <v-icon start>mdi-file-document-edit</v-icon>
                             VC 狀態變更記錄
+                        </v-tab>
+                        <v-tab value="medical-leaves">
+                            <v-icon start>mdi-medical-bag</v-icon>
+                            病假申請記錄
+                        </v-tab>
+                        <v-tab value="medical-leave-vp-logs">
+                            <v-icon start>mdi-shield-account</v-icon>
+                            病假 VP 驗證記錄
+                        </v-tab>
+                        <v-tab value="activity-logs">
+                            <v-icon start>mdi-history</v-icon>
+                            活動日誌
                         </v-tab>
                     </v-tabs>
 
@@ -209,6 +297,146 @@
                                     </template>
                                 </v-data-table>
                             </v-window-item>
+
+                            <!-- 病假申請記錄 -->
+                            <v-window-item value="medical-leaves">
+                                <v-data-table
+                                    :headers="medicalLeaveHeaders"
+                                    :items="medicalLeaves"
+                                    :loading="medicalLeavesLoading"
+                                    :items-per-page="20"
+                                    class="elevation-1"
+                                >
+                                    <template #[`item.leave_days`]="{ item }">
+                                        <v-chip color="info" size="small">
+                                            {{ item.leave_days }} 天
+                                        </v-chip>
+                                    </template>
+                                    <template #[`item.created_at`]="{ item }">
+                                        {{ formatDateTime(item.created_at) }}
+                                    </template>
+                                </v-data-table>
+                            </v-window-item>
+
+                            <!-- 病假 VP 驗證記錄 -->
+                            <v-window-item value="medical-leave-vp-logs">
+                                <v-data-table
+                                    :headers="medicalLeaveVPLogHeaders"
+                                    :items="medicalLeaveVPLogs"
+                                    :loading="medicalLeaveVPLogsLoading"
+                                    :items-per-page="20"
+                                    class="elevation-1"
+                                >
+                                    <template #[`item.verify_result`]="{ item }">
+                                        <v-chip
+                                            :color="item.verify_result === 'success' ? 'success' : 'error'"
+                                            size="small"
+                                        >
+                                            {{ item.verify_result }}
+                                        </v-chip>
+                                    </template>
+                                    <template #[`item.rejection_reason`]="{ item }">
+                                        <span v-if="item.rejection_reason" class="text-error">
+                                            {{ item.rejection_reason }}
+                                        </span>
+                                        <span v-else class="text-success">-</span>
+                                    </template>
+                                    <template #[`item.verified_at`]="{ item }">
+                                        {{ formatDateTime(item.verified_at) }}
+                                    </template>
+                                </v-data-table>
+                            </v-window-item>
+
+                            <!-- 活動日誌 -->
+                            <v-window-item value="activity-logs">
+                                <!-- 篩選器 -->
+                                <v-row class="mb-4">
+                                    <v-col cols="12" md="3">
+                                        <v-select
+                                            v-model="activityLogFilters.action"
+                                            :items="actionTypes"
+                                            label="行為類型"
+                                            clearable
+                                            variant="outlined"
+                                            density="compact"
+                                            @update:model-value="loadActivityLogs"
+                                        />
+                                    </v-col>
+                                    <v-col cols="12" md="3">
+                                        <v-select
+                                            v-model="activityLogFilters.status"
+                                            :items="statusTypes"
+                                            label="狀態"
+                                            clearable
+                                            variant="outlined"
+                                            density="compact"
+                                            @update:model-value="loadActivityLogs"
+                                        />
+                                    </v-col>
+                                    <v-col cols="12" md="3">
+                                        <v-text-field
+                                            v-model="activityLogFilters.employee_id"
+                                            label="員工編號"
+                                            clearable
+                                            variant="outlined"
+                                            density="compact"
+                                            @keyup.enter="loadActivityLogs"
+                                        />
+                                    </v-col>
+                                    <v-col cols="12" md="3">
+                                        <v-btn color="primary" @click="loadActivityLogs" block>
+                                            <v-icon start>mdi-filter</v-icon>
+                                            篩選
+                                        </v-btn>
+                                    </v-col>
+                                </v-row>
+
+                                <!-- 統計卡片 -->
+                                <v-row class="mb-4" v-if="activityStats">
+                                    <v-col cols="12" md="3" v-for="stat in activityStats.action_stats.slice(0, 4)" :key="stat.action">
+                                        <v-card elevation="2">
+                                            <v-card-text class="text-center">
+                                                <div class="text-h6">{{ stat.count }}</div>
+                                                <div class="text-caption text-medium-emphasis">{{ stat.action_display }}</div>
+                                            </v-card-text>
+                                        </v-card>
+                                    </v-col>
+                                </v-row>
+
+                                <v-data-table
+                                    :headers="activityLogHeaders"
+                                    :items="activityLogs"
+                                    :loading="activityLogsLoading"
+                                    :items-per-page="50"
+                                    class="elevation-1"
+                                >
+                                    <template #[`item.action_display`]="{ item }">
+                                        <v-chip size="small" color="primary" variant="tonal">
+                                            {{ item.action_display }}
+                                        </v-chip>
+                                    </template>
+                                    <template #[`item.status`]="{ item }">
+                                        <v-chip
+                                            :color="item.status === 'success' ? 'success' : 'error'"
+                                            size="small"
+                                        >
+                                            {{ item.status }}
+                                        </v-chip>
+                                    </template>
+                                    <template #[`item.actor_type`]="{ item }">
+                                        <v-chip
+                                            :color="getActorTypeColor(item.actor_type)"
+                                            size="small"
+                                            variant="tonal"
+                                        >
+                                            {{ item.actor_type }}
+                                        </v-chip>
+                                    </template>
+                                    <template #[`item.created_at`]="{ item }">
+                                        {{ formatDateTime(item.created_at) }}
+                                    </template>
+                                </v-data-table>
+                            </v-window-item>
                         </v-window>
                     </v-card-text>
                 </v-card>
@@ -296,7 +524,8 @@ const stats = ref({
     totalEmployees: 0,
     totalVCIssued: 0,
     totalLogins: 0,
-    totalVPVerifications: 0
+    totalVPVerifications: 0,
+    totalMedicalLeaves: 0
 })
 
 // 員工管理
@@ -350,6 +579,62 @@ const vcStatusLogHeaders = [
     { title: '操作', key: 'action', sortable: true },
     { title: '原因', key: 'reason', sortable: false },
     { title: '操作時間', key: 'created_at', sortable: true }
+]
+
+// 病假申請記錄
+const medicalLeaves = ref([])
+const medicalLeavesLoading = ref(false)
+const medicalLeaveHeaders = [
+    { title: '員工編號', key: 'employee_id', sortable: true },
+    { title: '姓名', key: 'employee.name', sortable: false },
+    { title: '請假起始日', key: 'leave_start_date', sortable: true },
+    { title: '請假結束日', key: 'leave_end_date', sortable: true },
+    { title: '請假天數', key: 'leave_days', sortable: true },
+    { title: '醫療院所', key: 'hospital_name', sortable: false },
+    { title: '診斷日期', key: 'diagnosis_date', sortable: true },
+    { title: '申請時間', key: 'created_at', sortable: true }
+]
+
+// 病假 VP 驗證記錄
+const medicalLeaveVPLogs = ref([])
+const medicalLeaveVPLogsLoading = ref(false)
+const medicalLeaveVPLogHeaders = [
+    { title: '員工編號', key: 'employee_id', sortable: true },
+    { title: '姓名', key: 'employee.name', sortable: false },
+    { title: '交易 ID', key: 'transaction_id', sortable: false },
+    { title: '驗證結果', key: 'verify_result', sortable: true },
+    { title: '拒絕原因', key: 'rejection_reason', sortable: false },
+    { title: '驗證時間', key: 'verified_at', sortable: true }
+]
+
+// 活動日誌
+const activityLogs = ref([])
+const activityLogsLoading = ref(false)
+const activityStats = ref(null)
+const activityLogFilters = ref({
+    action: null,
+    status: null,
+    employee_id: null,
+})
+const activityLogHeaders = [
+    { title: '員工編號', key: 'employee_id', sortable: true },
+    { title: '操作者', key: 'actor_id', sortable: true },
+    { title: '操作者類型', key: 'actor_type', sortable: true },
+    { title: '行為', key: 'action_display', sortable: false },
+    { title: '描述', key: 'description', sortable: false },
+    { title: '狀態', key: 'status', sortable: true },
+    { title: '時間', key: 'created_at', sortable: true }
+]
+const actionTypes = [
+    { title: '發行憑證', value: 'issue_vc' },
+    { title: '驗證 VP', value: 'verify_vp' },
+    { title: '撤銷憑證', value: 'revoke_vc' },
+    { title: '應徵申請', value: 'apply_job' },
+    { title: '申請病假', value: 'apply_leave' },
+]
+const statusTypes = [
+    { title: '成功', value: 'success' },
+    { title: '失敗', value: 'failed' },
 ]
 
 // 撤銷憑證
@@ -432,6 +717,75 @@ const loadVCStatusLogs = async () => {
         console.error('載入 VC 狀態變更記錄失敗:', error)
     } finally {
         vcStatusLogsLoading.value = false
+    }
+}
+
+const loadMedicalLeaves = async () => {
+    medicalLeavesLoading.value = true
+    try {
+        const response = await fetch('/api/admin/medical-leaves')
+        const data = await response.json()
+        if (data.success) {
+            medicalLeaves.value = data.data
+            stats.value.totalMedicalLeaves = data.meta.total
+        }
+    } catch (error) {
+        console.error('載入病假申請記錄失敗:', error)
+    } finally {
+        medicalLeavesLoading.value = false
+    }
+}
+
+const loadMedicalLeaveVPLogs = async () => {
+    medicalLeaveVPLogsLoading.value = true
+    try {
+        const response = await fetch('/api/admin/medical-leave-vp-logs')
+        const data = await response.json()
+        if (data.success) {
+            medicalLeaveVPLogs.value = data.data
+        }
+    } catch (error) {
+        console.error('載入病假 VP 驗證記錄失敗:', error)
+    } finally {
+        medicalLeaveVPLogsLoading.value = false
+    }
+}
+
+const loadActivityLogs = async () => {
+    activityLogsLoading.value = true
+    try {
+        const params = new URLSearchParams()
+        if (activityLogFilters.value.action) {
+            params.append('action', activityLogFilters.value.action)
+        }
+        if (activityLogFilters.value.status) {
+            params.append('status', activityLogFilters.value.status)
+        }
+        if (activityLogFilters.value.employee_id) {
+            params.append('employee_id', activityLogFilters.value.employee_id)
+        }
+
+        const response = await fetch(`/api/admin/activity-logs?${params}`)
+        const data = await response.json()
+        if (data.success) {
+            activityLogs.value = data.data
+        }
+    } catch (error) {
+        console.error('載入活動日誌失敗:', error)
+    } finally {
+        activityLogsLoading.value = false
+    }
+}
+
+const loadActivityStats = async () => {
+    try {
+        const response = await fetch('/api/admin/activity-stats')
+        const data = await response.json()
+        if (data.success) {
+            activityStats.value = data.data
+        }
+    } catch (error) {
+        console.error('載入活動統計失敗:', error)
     }
 }
 
@@ -561,12 +915,25 @@ const getActionColor = (action) => {
     }
 }
 
+const getActorTypeColor = (actorType) => {
+    switch (actorType) {
+        case 'admin': return 'error'
+        case 'employee': return 'success'
+        case 'system': return 'info'
+        default: return 'grey'
+    }
+}
+
 onMounted(() => {
     loadEmployees()
     loadLoginLogs()
     loadVCLogs()
     loadVPLogs()
     loadVCStatusLogs()
+    loadMedicalLeaves()
+    loadMedicalLeaveVPLogs()
+    loadActivityLogs()
+    loadActivityStats()
 })
 </script>
 

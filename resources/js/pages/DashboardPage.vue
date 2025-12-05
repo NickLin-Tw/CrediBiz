@@ -113,62 +113,43 @@
                             </v-card-title>
                             <v-card-text class="pa-6">
                                 <v-row>
-                                    <!-- 功能按鈕 - 預留位置 -->
+                                    <!-- 病假申請功能 -->
                                     <v-col cols="12" sm="6" md="4">
                                         <v-card
                                             class="function-card"
                                             elevation="2"
                                             rounded="lg"
                                             hover
-                                            disabled
+                                            @click="goToMedicalLeave"
                                         >
                                             <v-card-text class="text-center pa-6">
-                                                <v-icon size="64" color="grey-lighten-1" class="mb-4">
-                                                    mdi-folder-outline
+                                                <v-icon size="64" color="error" class="mb-4">
+                                                    mdi-hospital-box
                                                 </v-icon>
-                                                <div class="text-h6 mb-2">功能 A</div>
+                                                <div class="text-h6 mb-2">病假申請</div>
                                                 <div class="text-body-2 text-medium-emphasis">
-                                                    業務功能開發中
+                                                    使用醫療診斷證明申請病假
                                                 </div>
                                             </v-card-text>
                                         </v-card>
                                     </v-col>
 
+                                    <!-- 停車證申請功能 -->
                                     <v-col cols="12" sm="6" md="4">
                                         <v-card
                                             class="function-card"
                                             elevation="2"
                                             rounded="lg"
                                             hover
-                                            disabled
+                                            @click="goToParkingPermit"
                                         >
                                             <v-card-text class="text-center pa-6">
-                                                <v-icon size="64" color="grey-lighten-1" class="mb-4">
-                                                    mdi-file-document-outline
+                                                <v-icon size="64" color="indigo" class="mb-4">
+                                                    mdi-car
                                                 </v-icon>
-                                                <div class="text-h6 mb-2">功能 B</div>
+                                                <div class="text-h6 mb-2">停車證申請</div>
                                                 <div class="text-body-2 text-medium-emphasis">
-                                                    業務功能開發中
-                                                </div>
-                                            </v-card-text>
-                                        </v-card>
-                                    </v-col>
-
-                                    <v-col cols="12" sm="6" md="4">
-                                        <v-card
-                                            class="function-card"
-                                            elevation="2"
-                                            rounded="lg"
-                                            hover
-                                            disabled
-                                        >
-                                            <v-card-text class="text-center pa-6">
-                                                <v-icon size="64" color="grey-lighten-1" class="mb-4">
-                                                    mdi-cog-outline
-                                                </v-icon>
-                                                <div class="text-h6 mb-2">功能 C</div>
-                                                <div class="text-body-2 text-medium-emphasis">
-                                                    業務功能開發中
+                                                    申請臺灣航空地下停車場停車證
                                                 </div>
                                             </v-card-text>
                                         </v-card>
@@ -558,6 +539,16 @@ const logout = async () => {
         // 跳轉到首頁
         router.push({ name: 'Home' })
     }
+}
+
+// 前往病假申請頁面
+const goToMedicalLeave = () => {
+    router.push({ name: 'MedicalLeave' })
+}
+
+// 前往停車證申請頁面
+const goToParkingPermit = () => {
+    router.push({ name: 'ParkingPermit' })
 }
 
 // 開始換發憑證

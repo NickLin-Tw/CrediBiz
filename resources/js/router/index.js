@@ -43,6 +43,55 @@ const routes = [
         path: '/admin',
         name: 'Admin',
         component: () => import('../pages/AdminDashboardPage.vue')
+    },
+    {
+        path: '/admin/dashboard',
+        name: 'AdminDashboard',
+        component: () => import('../pages/AdminDashboardPage.vue')
+    },
+    {
+        path: '/admin/employees',
+        name: 'AdminEmployees',
+        component: () => import('../pages/AdminEmployeesPage.vue')
+    },
+    {
+        path: '/admin/medical-leaves',
+        name: 'AdminMedicalLeaves',
+        component: () => import('../pages/AdminMedicalLeavesPage.vue')
+    },
+    {
+        path: '/admin/api-logs',
+        name: 'AdminApiLogs',
+        component: () => import('../pages/AdminApiLogsPage.vue')
+    },
+    {
+        path: '/airport-pos',
+        name: 'AirportPOS',
+        component: () => import('../pages/AirportPOSPage.vue'),
+        meta: { requiresAuth: false }
+    },
+    {
+        path: '/medical-leave',
+        name: 'MedicalLeave',
+        component: () => import('../pages/MedicalLeavePage.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/parking-permit',
+        name: 'ParkingPermit',
+        component: () => import('../pages/ParkingPermitPage.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/visitor-parking/:visitorToken',
+        name: 'VisitorParkingClaim',
+        component: () => import('../pages/VisitorParkingClaimPage.vue'),
+        meta: { requiresAuth: false }
+    },
+    {
+        path: '/admin/visitor-parking',
+        name: 'AdminVisitorParking',
+        component: () => import('../pages/AdminVisitorParkingPage.vue')
     }
 ]
 

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeLoginLog;
 use App\Models\IssuedVC;
+use App\Models\MedicalLeave;
 use App\Models\VPVerificationResult;
 use App\Models\VCStatusChangeLog;
+use App\Models\ActivityLog;
 use App\Services\TWDIWIssuerService;
 use Illuminate\Http\Request;
 
@@ -15,10 +17,14 @@ class AdminDashboardController extends Controller
 {
     /**
      * 顯示後台主頁面
+     *
+     * @return \Illuminate\Contracts\View\View
      */
-    public function index()
+    public function index(): \Illuminate\Contracts\View\View
     {
-        return view('admin.dashboard');
+        /** @var view-string $viewName */
+        $viewName = 'admin.dashboard';
+        return view($viewName);
     }
 
     /**
@@ -153,6 +159,15 @@ class AdminDashboardController extends Controller
                 'employee_vc_expiry_date' => null,
             ]);
 
+            // 記錄活動日誌
+            ActivityLog::logVCRevoke(
+                employeeId: $employee->employee_id,
+                vcCid: $oldCid,
+                reason: $request->reason,
+                actorId: 'admin',
+                actorType: 'admin'
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => '憑證已成功撤銷',
@@ -212,5 +227,158 @@ class AdminDashboardController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * 取得病假申請記錄
+     */
+    public function getMedicalLeaves(Request $request)
+    {
+        $query = MedicalLeave::with(['employee', 'vpVerification'])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->has('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+
+        $leaves = $query->paginate(20);
+
+        return response()->json([
+            'success' => true,
+            'data' => $leaves->items(),
+            'meta' => [
+                'current_page' => $leaves->currentPage(),
+                'last_page' => $leaves->lastPage(),
+                'per_page' => $leaves->perPage(),
+                'total' => $leaves->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * 取得病假 VP 驗證記錄
+     */
+    public function getMedicalLeaveVPLogs(Request $request)
+    {
+        $query = VPVerificationResult::with('employee')
+            ->where('vp_type', 'medical_leave')
+            ->orderBy('verified_at', 'desc');
+
+        if ($request->has('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+
+        $logs = $query->paginate(20);
+
+        return response()->json([
+            'success' => true,
+            'data' => $logs->items(),
+            'meta' => [
+                'current_page' => $logs->currentPage(),
+                'last_page' => $logs->lastPage(),
+                'per_page' => $logs->perPage(),
+                'total' => $logs->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * 取得活動日誌
+     */
+    public function getActivityLogs(Request $request)
+    {
+        $query = ActivityLog::with(['employee', 'actor'])
+            ->orderBy('created_at', 'desc');
+
+        // 篩選：員工 ID
+        if ($request->has('employee_id') && $request->employee_id) {
+            $query->where('employee_id', $request->employee_id);
+        }
+
+        // 篩選：操作者 ID
+        if ($request->has('actor_id') && $request->actor_id) {
+            $query->where('actor_id', $request->actor_id);
+        }
+
+        // 篩選：行為類型
+        if ($request->has('action') && $request->action) {
+            $query->where('action', $request->action);
+        }
+
+        // 篩選：狀態
+        if ($request->has('status') && $request->status) {
+            $query->where('status', $request->status);
+        }
+
+        // 篩選：日期範圍
+        if ($request->has('start_date') && $request->start_date) {
+            $query->where('created_at', '>=', $request->start_date);
+        }
+        if ($request->has('end_date') && $request->end_date) {
+            $query->where('created_at', '<=', $request->end_date . ' 23:59:59');
+        }
+
+        $logs = $query->paginate($request->input('per_page', 50));
+
+        return response()->json([
+            'success' => true,
+            'data' => $logs->items(),
+            'meta' => [
+                'current_page' => $logs->currentPage(),
+                'last_page' => $logs->lastPage(),
+                'per_page' => $logs->perPage(),
+                'total' => $logs->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * 取得活動日誌統計
+     */
+    public function getActivityStats(Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $query = ActivityLog::query();
+
+        if ($startDate) {
+            $query->where('created_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->where('created_at', '<=', $endDate . ' 23:59:59');
+        }
+
+        // 按行為類型統計
+        $actionStats = (clone $query)
+            ->selectRaw('action, action_display, COUNT(*) as count')
+            ->groupBy('action', 'action_display')
+            ->orderBy('count', 'desc')
+            ->get();
+
+        // 按狀態統計
+        $statusStats = (clone $query)
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->get();
+
+        // 按操作者類型統計
+        $actorTypeStats = (clone $query)
+            ->selectRaw('actor_type, COUNT(*) as count')
+            ->groupBy('actor_type')
+            ->get();
+
+        // 總數
+        $totalLogs = $query->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_logs' => $totalLogs,
+                'action_stats' => $actionStats,
+                'status_stats' => $statusStats,
+                'actor_type_stats' => $actorTypeStats,
+            ],
+        ]);
     }
 }

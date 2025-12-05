@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\ActivityLog;
 use App\Services\TWDIWVerifierService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -122,6 +123,38 @@ class ApplicationController extends Controller
             // 9. 標記 VP 驗證結果為已使用
             $verifierService->markVPResultAsUsed($vpTransactionId);
 
+            // 10. 記錄 VP 驗證日誌
+            ActivityLog::logVPVerification(
+                transactionId: $vpTransactionId,
+                reason: '應徵者使用三張前置憑證申請職位',
+                success: true,
+                employeeId: $employee->employee_id,
+                metadata: [
+                    'application' => true,
+                    'position' => $employee->position,
+                    'department' => $employee->department,
+                ]
+            );
+
+            // 11. 記錄應徵申請日誌
+            ActivityLog::log([
+                'employee_id' => $employee->employee_id,
+                'actor_id' => $employee->employee_id,
+                'actor_type' => 'employee',
+                'action' => 'apply_job',
+                'action_display' => '應徵申請',
+                'description' => "應徵 {$employee->position} 職位",
+                'target_type' => 'application',
+                'target_id' => $employee->employee_id,
+                'status' => 'success',
+                'metadata' => [
+                    'vp_transaction_id' => $vpTransactionId,
+                    'position' => $employee->position,
+                    'department' => $employee->department,
+                    'company_name' => $employee->company_name,
+                ],
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => '應徵申請成功',
@@ -157,7 +190,7 @@ class ApplicationController extends Controller
         // 中華民國數位身分證
         if (isset($fieldMap['id_number'])) {
             $employeeData['name'] = $fieldMap['name'] ?? null;
-            $employeeData['id_number'] = $fieldMap['id_number'] ?? null;
+            $employeeData['id_number'] = $fieldMap['id_number'];
             $employeeData['roc_birthday'] = $fieldMap['roc_birthday'] ?? null;
             $employeeData['registered_address'] = $fieldMap['registered_address'] ?? null;
         }
@@ -184,29 +217,6 @@ class ApplicationController extends Controller
             $employeeData['score_total'] = isset($fieldMap['score_total'])
                 ? intval($fieldMap['score_total'])
                 : null;
-        }
-    }
-
-    /**
-     * 民國年轉西元年（YYYMMDD -> Y-m-d）
-     */
-    private function convertRocDateToWestern(string $rocDate): ?string
-    {
-        if (strlen($rocDate) !== 7) {
-            return null;
-        }
-
-        $rocYear = intval(substr($rocDate, 0, 3));
-        $month = substr($rocDate, 3, 2);
-        $day = substr($rocDate, 5, 2);
-
-        $westernYear = $rocYear + 1911;
-
-        try {
-            $date = Carbon::createFromFormat('Y-m-d', "{$westernYear}-{$month}-{$day}");
-            return $date->format('Y-m-d');
-        } catch (\Exception $e) {
-            return null;
         }
     }
 }

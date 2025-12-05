@@ -24,9 +24,24 @@ yarn-error.log
 /compliance/*.html
 /compliance/*.xml
 /compliance/*.txt
-!/compliance/README.md
 
-# Hide all markdown files except README.md
-*.md
-!README.md
-!/compliance/README.md
+# Arduino 程式（硬體相關，不上傳）
+/arduino/
+
+# 排除不必要的 markdown 檔案
+CLAUDE.md
+COMPLIANCE.md
+QUICKSTART.md
+SYSTEM_FEATURES.md
+SYSTEM_INTRODUCTION.md
+/compliance/*.md
+/docs/
+
+# PHPStan cache
+/storage/phpstan/
+
+# Claude Code 設定
+/.claude/
+
+# macOS
+.DS_Store

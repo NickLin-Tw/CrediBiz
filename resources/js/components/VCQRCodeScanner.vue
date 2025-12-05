@@ -92,8 +92,13 @@
             prominent
             class="mb-4"
         >
-            <v-alert-title>領取成功！</v-alert-title>
-            <div>{{ successMessage }}</div>
+            <v-alert-title class="d-flex align-center">
+                <v-icon color="success" class="mr-2" size="large">mdi-check-circle</v-icon>
+                {{ successMessage }}
+            </v-alert-title>
+            <div class="text-caption mt-2 text-medium-emphasis">
+                視窗將在 {{ autoCloseCountdown }} 秒後自動關閉
+            </div>
         </v-alert>
     </div>
 </template>
@@ -154,7 +159,7 @@ const props = defineProps({
     }
 })
 
-const emit = defineEmits(['success', 'error', 'generated'])
+const emit = defineEmits(['success', 'error', 'generated', 'auto-close'])
 
 const loading = ref(false)
 const qrCode = ref('')
@@ -162,9 +167,11 @@ const deepLink = ref('')
 const transactionId = ref('')
 const remainingSeconds = ref(0)
 const success = ref(false)
+const autoCloseCountdown = ref(5)
 
 let countdownInterval = null
 let pollingInterval = null
+let autoCloseInterval = null
 
 // 產生 QR Code
 const generate = async () => {
@@ -237,11 +244,28 @@ const startPolling = () => {
                 clearTimers()
                 success.value = true
                 emit('success', { cid: data.cid, transactionId: transactionId.value, data })
+
+                // 開始自動關閉倒數計時
+                startAutoCloseCountdown()
             }
         } catch (error) {
             console.error('輪詢錯誤:', error)
         }
     }, props.pollingInterval)
+}
+
+// 開始自動關閉倒數計時
+const startAutoCloseCountdown = () => {
+    autoCloseCountdown.value = 5
+    clearInterval(autoCloseInterval)
+    autoCloseInterval = setInterval(() => {
+        autoCloseCountdown.value--
+        if (autoCloseCountdown.value <= 0) {
+            clearInterval(autoCloseInterval)
+            autoCloseInterval = null
+            emit('auto-close')
+        }
+    }, 1000)
 }
 
 // 格式化時間
@@ -261,6 +285,10 @@ const clearTimers = () => {
         clearInterval(pollingInterval)
         pollingInterval = null
     }
+    if (autoCloseInterval) {
+        clearInterval(autoCloseInterval)
+        autoCloseInterval = null
+    }
 }
 
 // 重置組件
@@ -271,6 +299,7 @@ const reset = () => {
     transactionId.value = ''
     remainingSeconds.value = 0
     success.value = false
+    autoCloseCountdown.value = 5
 }
 
 // Expose methods

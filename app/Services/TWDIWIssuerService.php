@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ApiLog;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -57,25 +58,72 @@ class TWDIWIssuerService
             $payload['expiredDate'] = $expiredDate;
         }
 
-        $response = Http::withHeaders([
+        $endpoint = '/api/qrcode/data';
+        $url = "{$this->baseUrl}{$endpoint}";
+        $headers = [
             'Access-Token' => $this->accessToken,
             'Content-Type' => 'application/json',
-        ])->post("{$this->baseUrl}/api/qrcode/data", $payload);
-
-        if ($response->failed()) {
-            throw new \Exception(
-                'TW-DIW Issuer API 呼叫失敗: ' .
-                ($response->json()['message'] ?? $response->body())
-            );
-        }
-
-        $data = $response->json();
-
-        return [
-            'transactionId' => $data['transactionId'] ?? null,
-            'qrCode' => $data['qrCode'] ?? null,
-            'deepLink' => $data['deepLink'] ?? null,
         ];
+
+        $startTime = microtime(true);
+
+        try {
+            $response = Http::withHeaders($headers)->post($url, $payload);
+
+            $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+            // 記錄 API Log
+            ApiLog::logApiCall([
+                'service' => 'issuer',
+                'method' => 'POST',
+                'endpoint' => $endpoint,
+                'full_url' => $url,
+                'request_headers' => $this->sanitizeHeaders($headers),
+                'request_body' => $payload,
+                'response_status' => $response->status(),
+                'response_headers' => $response->headers(),
+                'response_body' => $response->json(),
+                'duration_ms' => $duration,
+                'success' => $response->successful(),
+                'error_message' => $response->failed() ? ($response->json()['message'] ?? $response->body()) : null,
+                'transaction_id' => $response->json()['transactionId'] ?? null,
+            ]);
+
+            if ($response->failed()) {
+                throw new \Exception(
+                    'TW-DIW Issuer API 呼叫失敗: ' .
+                    ($response->json()['message'] ?? $response->body())
+                );
+            }
+
+            $data = $response->json();
+
+            return [
+                'transactionId' => $data['transactionId'] ?? null,
+                'qrCode' => $data['qrCode'] ?? null,
+                'deepLink' => $data['deepLink'] ?? null,
+            ];
+        } catch (\Exception $e) {
+            $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+            // 記錄失敗的 API Log
+            ApiLog::logApiCall([
+                'service' => 'issuer',
+                'method' => 'POST',
+                'endpoint' => $endpoint,
+                'full_url' => $url,
+                'request_headers' => $this->sanitizeHeaders($headers),
+                'request_body' => $payload,
+                'response_status' => null,
+                'response_headers' => null,
+                'response_body' => null,
+                'duration_ms' => $duration,
+                'success' => false,
+                'error_message' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
     }
 
     /**
@@ -87,53 +135,106 @@ class TWDIWIssuerService
      */
     public function getVCStatus(string $transactionId): array
     {
-        $response = Http::withHeaders([
+        $endpoint = "/api/credential/nonce/{$transactionId}";
+        $url = "{$this->baseUrl}{$endpoint}";
+        $headers = [
             'Access-Token' => $this->accessToken,
-        ])->get("{$this->baseUrl}/api/credential/nonce/{$transactionId}");
-
-        if ($response->failed()) {
-            throw new \Exception(
-                '查詢 VC 狀態失敗: ' .
-                ($response->json()['message'] ?? $response->body())
-            );
-        }
-
-        $data = $response->json();
-
-        // 解析 JWT 並取得 CID
-        $jwt = $data['credential'] ?? null;
-        $cid = null;
-        $jwtDecoded = null;
-
-        if ($jwt) {
-            $parts = explode('.', $jwt);
-            if (count($parts) === 3) {
-                $header = json_decode(base64_decode(strtr($parts[0], '-_', '+/')), true);
-                $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-
-                // 從 JWT Payload 的 jti 欄位取得 cid（只取 UUID 部分）
-                $jti = $payload['jti'] ?? null;
-                if ($jti && preg_match('/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i', $jti, $matches)) {
-                    $cid = $matches[1];
-                } else {
-                    $cid = $jti;
-                }
-
-                $jwtDecoded = [
-                    'header' => $header,
-                    'payload' => $payload,
-                    'signature' => $parts[2],
-                ];
-            }
-        }
-
-        return [
-            'transactionId' => $transactionId,
-            'cid' => $cid,
-            'jwt' => $jwt,
-            'jwtDecoded' => $jwtDecoded,
-            'credential' => $data,
         ];
+
+        $startTime = microtime(true);
+
+        try {
+            $response = Http::withHeaders($headers)->get($url);
+
+            $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+            // 記錄 API Log
+            ApiLog::logApiCall([
+                'service' => 'issuer',
+                'method' => 'GET',
+                'endpoint' => $endpoint,
+                'full_url' => $url,
+                'request_headers' => $this->sanitizeHeaders($headers),
+                'request_body' => null,
+                'response_status' => $response->status(),
+                'response_headers' => $response->headers(),
+                'response_body' => $response->json(),
+                'duration_ms' => $duration,
+                'success' => $response->successful(),
+                'error_message' => $response->failed() ? ($response->json()['message'] ?? $response->body()) : null,
+                'transaction_id' => $transactionId,
+            ]);
+
+            if ($response->failed()) {
+                throw new \Exception(
+                    '查詢 VC 狀態失敗: ' .
+                    ($response->json()['message'] ?? $response->body())
+                );
+            }
+
+            $data = $response->json();
+
+            // 解析 JWT 並取得 CID 和 Holder DID (sub)
+            $jwt = $data['credential'] ?? null;
+            $cid = null;
+            $holderDid = null;
+            $jwtDecoded = null;
+
+            if ($jwt) {
+                $parts = explode('.', $jwt);
+                if (count($parts) === 3) {
+                    $header = json_decode(base64_decode(strtr($parts[0], '-_', '+/')), true);
+                    $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
+
+                    // 從 JWT Payload 的 jti 欄位取得 cid（只取 UUID 部分）
+                    $jti = $payload['jti'] ?? null;
+                    if ($jti && preg_match('/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i', $jti, $matches)) {
+                        $cid = $matches[1];
+                    } else {
+                        $cid = $jti;
+                    }
+
+                    // 從 JWT Payload 的 sub 欄位取得 holder DID（接收者的 DID）
+                    $holderDid = $payload['sub'] ?? null;
+
+                    $jwtDecoded = [
+                        'header' => $header,
+                        'payload' => $payload,
+                        'signature' => $parts[2],
+                    ];
+                }
+            }
+
+            return [
+                'transactionId' => $transactionId,
+                'cid' => $cid,
+                'holderDid' => $holderDid,
+                'jwt' => $jwt,
+                'jwtDecoded' => $jwtDecoded,
+                'credential' => $data,
+            ];
+        } catch (\Exception $e) {
+            $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+            // 記錄失敗的 API Log
+            ApiLog::logApiCall([
+                'service' => 'issuer',
+                'method' => 'GET',
+                'endpoint' => $endpoint,
+                'full_url' => $url,
+                'request_headers' => $this->sanitizeHeaders($headers),
+                'request_body' => null,
+                'response_status' => null,
+                'response_headers' => null,
+                'response_body' => null,
+                'duration_ms' => $duration,
+                'success' => false,
+                'error_message' => $e->getMessage(),
+                'transaction_id' => $transactionId,
+            ]);
+
+            throw $e;
+        }
     }
 
     /**
@@ -151,18 +252,74 @@ class TWDIWIssuerService
             throw new \Exception("無效的操作類型：{$action}，目前支援 revocation, suspension, recovery");
         }
 
-        $response = Http::withHeaders([
+        $endpoint = "/api/credential/{$cid}/{$action}";
+        $url = "{$this->baseUrl}{$endpoint}";
+        $headers = [
             'Access-Token' => $this->accessToken,
             'Content-Type' => 'application/json',
-        ])->put("{$this->baseUrl}/api/credential/{$cid}/{$action}", []);
+        ];
 
-        if ($response->failed()) {
-            throw new \Exception(
-                "變更 VC 狀態失敗（{$action}）: " .
-                ($response->json()['message'] ?? $response->body())
-            );
+        $startTime = microtime(true);
+
+        try {
+            $response = Http::withHeaders($headers)->put($url, []);
+
+            $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+            // 記錄 API Log
+            ApiLog::logApiCall([
+                'service' => 'issuer',
+                'method' => 'PUT',
+                'endpoint' => $endpoint,
+                'full_url' => $url,
+                'request_headers' => $this->sanitizeHeaders($headers),
+                'request_body' => [],
+                'response_status' => $response->status(),
+                'response_headers' => $response->headers(),
+                'response_body' => $response->json(),
+                'duration_ms' => $duration,
+                'success' => $response->successful(),
+                'error_message' => $response->failed() ? ($response->json()['message'] ?? $response->body()) : null,
+            ]);
+
+            if ($response->failed()) {
+                throw new \Exception(
+                    "變更 VC 狀態失敗（{$action}）: " .
+                    ($response->json()['message'] ?? $response->body())
+                );
+            }
+
+            return $response->json();
+        } catch (\Exception $e) {
+            $duration = (int) ((microtime(true) - $startTime) * 1000);
+
+            ApiLog::logApiCall([
+                'service' => 'issuer',
+                'method' => 'PUT',
+                'endpoint' => $endpoint,
+                'full_url' => $url,
+                'request_headers' => $this->sanitizeHeaders($headers),
+                'request_body' => [],
+                'response_status' => null,
+                'response_headers' => null,
+                'response_body' => null,
+                'duration_ms' => $duration,
+                'success' => false,
+                'error_message' => $e->getMessage(),
+            ]);
+
+            throw $e;
         }
+    }
 
-        return $response->json();
+    /**
+     * 移除敏感資訊（如 Access-Token）
+     */
+    protected function sanitizeHeaders(array $headers): array
+    {
+        if (isset($headers['Access-Token'])) {
+            $headers['Access-Token'] = '***REDACTED***';
+        }
+        return $headers;
     }
 }
