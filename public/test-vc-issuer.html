@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>TW-DIW VC 發行測試</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .form-section {
+            padding: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .form-group small {
+            display: block;
+            margin-top: 4px;
+            color: #666;
+            font-size: 12px;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-top: 2px solid #e0e0e0;
+            display: none;
+        }
+        .result-section.show {
+            display: block;
+        }
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .qr-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .qr-container img {
+            max-width: 300px;
+            border: 4px solid white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .deep-link-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        .deep-link-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+        .credential-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .credential-info h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+        .credential-info pre {
+            background: #f1f3f5;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .countdown {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .countdown.warning {
+            color: #ff9800;
+        }
+        .countdown.danger {
+            color: #f44336;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .regenerate-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        .regenerate-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎫 TW-DIW VC 發行測試</h1>
+            <p>中華民國數位身分證 (00000000_roc_did_vc)</p>
+        </div>
+
+        <div class="form-section">
+            <form id="vcForm">
+                <div class="form-group">
+                    <label for="name">姓名 *</label>
+                    <input type="text" id="name" name="name" required pattern="[a-zA-Z0-9_\u4e00-\u9fa5]+" placeholder="例如：王小明">
+                    <small>只能輸入中英文數字和_</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="id_number">國民身分證統一編號 *</label>
+                    <input type="text" id="id_number" name="id_number" required pattern="[A-Z][12][0-9]{8}" maxlength="10" placeholder="例如：A123456789">
+                    <small>台灣身分證字號（1 個英文字母 + 9 個數字）</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="roc_birthday">民國出生年月日 *</label>
+                    <input type="text" id="roc_birthday" name="roc_birthday" required pattern="[0-9]{7}" maxlength="7" placeholder="例如：0850315（民國 85 年 3 月 15 日）">
+                    <small>只允許輸入數字且長度為 7 碼（格式：YYYMMDD）</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="registered_address">戶籍地址 *</label>
+                    <input type="text" id="registered_address" name="registered_address" required pattern="[a-zA-Z0-9_\u4e00-\u9fa5]+" placeholder="例如：台北市大安區信義路四段1號">
+                    <small>只能輸入中英文數字和_</small>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">🚀 發行憑證</button>
+            </form>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="result-title">📱 掃描 QR Code 領取憑證</div>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('vcForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultSection = document.getElementById('resultSection');
+        const resultContent = document.getElementById('resultContent');
+
+        let pollingInterval = null;
+        let countdownInterval = null;
+        let currentFormData = null;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // 收集表單資料
+            const formData = new FormData(form);
+            currentFormData = {};
+            for (let [key, value] of formData.entries()) {
+                currentFormData[key] = value;
+            }
+
+            await issueCredential(currentFormData);
+        });
+
+        async function issueCredential(fields) {
+            // 清除舊的計時器
+            if (pollingInterval) clearInterval(pollingInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            // 顯示載入狀態
+            submitBtn.disabled = true;
+            submitBtn.textContent = '發行中...';
+            resultSection.classList.add('show');
+            resultContent.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>正在發行憑證...</p>
+                </div>
+            `;
+
+            try {
+                // 取得 CSRF Token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+                // 呼叫發行 API
+                const issueResponse = await fetch('/api/test/vc/issue', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        vcUid: '00000000_roc_did_vc',
+                        fields: fields
+                    })
+                });
+
+                const issueData = await issueResponse.json();
+
+                if (!issueResponse.ok) {
+                    throw new Error(issueData.message || '發行失敗');
+                }
+
+                // 顯示 QR Code 與倒數計時
+                displayQRCodeWithCountdown(issueData);
+
+                // 輪詢查詢憑證狀態
+                pollCredentialStatus(issueData.transactionId);
+
+            } catch (error) {
+                resultContent.innerHTML = `
+                    <div class="error">❌ ${error.message}</div>
+                `;
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 發行憑證';
+            }
+        }
+
+        function displayQRCodeWithCountdown(issueData) {
+            let remainingSeconds = 180; // 3 分鐘 = 180 秒
+
+            const updateDisplay = () => {
+                const minutes = Math.floor(remainingSeconds / 60);
+                const seconds = remainingSeconds % 60;
+                const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                let countdownClass = 'countdown';
+                if (remainingSeconds <= 30) {
+                    countdownClass += ' danger';
+                } else if (remainingSeconds <= 60) {
+                    countdownClass += ' warning';
+                }
+
+                resultContent.innerHTML = `
+                    <div class="success">✅ QR Code 產生成功！請在 3 分鐘內完成掃描</div>
+                    <div class="${countdownClass}">⏱️ ${timeStr}</div>
+                    <div class="qr-container">
+                        <img src="${issueData.qrCode}" alt="QR Code">
+                        <br>
+                        <a href="${issueData.deepLink}" class="deep-link-btn">📲 開啟數位皮夾</a>
+                        <br>
+                        <button class="regenerate-btn" onclick="regenerateQRCode()">🔄 重新產生 QR Code</button>
+                    </div>
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>等待使用者掃描 QR Code...</p>
+                        <small>Transaction ID: ${issueData.transactionId}</small>
+                    </div>
+                `;
+            };
+
+            updateDisplay();
+
+            // 開始倒數計時
+            countdownInterval = setInterval(() => {
+                remainingSeconds--;
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    clearInterval(pollingInterval);
+                    resultContent.innerHTML = `
+                        <div class="error">⏱️ 驗證逾時，請重新產生 QR Code</div>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button class="regenerate-btn" onclick="regenerateQRCode()">🔄 重新產生 QR Code</button>
+                        </div>
+                    `;
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🚀 發行憑證';
+                } else {
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+
+        function regenerateQRCode() {
+            if (currentFormData) {
+                issueCredential(currentFormData);
+            }
+        }
+
+        async function pollCredentialStatus(transactionId) {
+            let attempts = 0;
+            const maxAttempts = 36; // 3 分鐘（每 5 秒一次）
+
+            pollingInterval = setInterval(async () => {
+                attempts++;
+
+                try {
+                    const response = await fetch(`/api/test/vc/status/${transactionId}`);
+                    const data = await response.json();
+
+                    if (response.ok && data.credential) {
+                        clearInterval(pollingInterval);
+                        clearInterval(countdownInterval);
+                        displayCredentialInfo(data);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(pollingInterval);
+                        // 倒數計時會處理逾時顯示
+                    }
+                } catch (error) {
+                    console.error('查詢錯誤:', error);
+                }
+            }, 5000); // 每 5 秒查詢一次
+        }
+
+        function displayCredentialInfo(data) {
+            let decodedSection = '';
+            if (data.jwtDecoded) {
+                decodedSection = `
+                    <div class="credential-info">
+                        <h3>📄 JWT Header</h3>
+                        <pre>${JSON.stringify(data.jwtDecoded.header, null, 2)}</pre>
+                    </div>
+                    <div class="credential-info">
+                        <h3>📦 JWT Payload</h3>
+                        <pre>${JSON.stringify(data.jwtDecoded.payload, null, 2)}</pre>
+                    </div>
+                `;
+            }
+
+            resultContent.innerHTML = `
+                <div class="success">🎉 憑證發行成功！</div>
+                <div class="credential-info">
+                    <h3>📋 憑證資訊</h3>
+                    <p><strong>Credential ID (cid):</strong> <span style="color: #667eea; font-weight: bold;">${data.cid || 'N/A'}</span></p>
+                    <p><strong>來源：</strong>JWT Payload 的 <code>jti</code> 欄位</p>
+                    <p><strong>Transaction ID:</strong> ${data.transactionId}</p>
+                    <p style="margin-top: 10px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; font-size: 13px;">
+                        💡 <strong>重要：</strong>此 <code>cid</code> 用於後續撤銷憑證 (Revocation) 操作
+                    </p>
+                </div>
+                <div class="credential-info">
+                    <h3>🔐 完整 JWT Token</h3>
+                    <pre style="word-break: break-all; white-space: pre-wrap;">${data.jwt}</pre>
+                </div>
+                ${decodedSection}
+                <div class="credential-info">
+                    <h3>🗂️ 完整回應資料</h3>
+                    <pre>${JSON.stringify(data.credential, null, 2)}</pre>
+                </div>
+            `;
+            submitBtn.disabled = false;
+            submitBtn.textContent = '🚀 發行憑證';
+        }
+    </script>
+</body>
+</html>

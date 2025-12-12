@@ -1,0 +1,22 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+        - config
+        - database
+    excludePaths:
+        - vendor
+        - storage
+        - bootstrap/cache
+    tmpDir: storage/phpstan
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        - '#Undefined variable: \$this#'
+        - '#Access to an undefined property Illuminate\\Http\\Request::\$\w+#'
+        - '#Access to an undefined property App\\Models\\User::\$\w+#'
+        - '#Call to an undefined method App\\Models\\User::\w+\(\)#'
+        - '#Relation .+ is not found in .+ model#'
+        - '#has no value type specified in iterable type array#'

@@ -1,0 +1,181 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Employee;
+use App\Services\TWDIWVerifierService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
+
+class ApplicationController extends Controller
+{
+    /**
+     * 處理應徵申請（透過 VP 資料）
+     */
+    public function store(Request $request)
+    {
+        // 1. 驗證輸入
+        $validator = Validator::make($request->all(), [
+            'vp_transaction_id' => 'required|string|uuid',
+            'vp_credentials' => 'required|array|min:3|max:3',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => '無效的請求資料',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $vpTransactionId = $request->input('vp_transaction_id');
+        $credentials = $request->input('vp_credentials');
+
+        // 檢查是否已經使用過此 VP
+        if (Employee::where('vp_transaction_id', $vpTransactionId)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => '此憑證已被使用過',
+            ], 409);
+        }
+
+        try {
+            // 2. 驗證憑證資料結構
+            $names = [];
+            foreach ($credentials as $vc) {
+                if (!isset($vc['claims']) || !is_array($vc['claims'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => '憑證資料格式錯誤',
+                    ], 400);
+                }
+
+                // 收集姓名以檢查一致性
+                foreach ($vc['claims'] as $claim) {
+                    if (isset($claim['ename']) && $claim['ename'] === 'name') {
+                        $names[] = $claim['value'] ?? '';
+                    }
+                }
+            }
+
+            // 3. 檢查姓名一致性
+            if (count($names) !== 3 || count(array_unique($names)) !== 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '不同憑證中的姓名不一致',
+                ], 400);
+            }
+
+            // 4. 解析三張 VC 的資料
+            $employeeData = [
+                'vp_transaction_id' => $vpTransactionId,
+                'company_name' => '臺灣航空',
+                'department' => 'Cabin Crew',
+                'position' => 'Cabin Crew',
+                'employment_start_date' => Carbon::today(),
+            ];
+
+            foreach ($credentials as $vc) {
+                $this->extractVCData($vc['claims'], $employeeData);
+            }
+
+            // 5. 產生員工編號
+            $employeeData['employee_id'] = Employee::generateEmployeeId();
+
+            // 6. 建立員工記錄
+            $employee = Employee::create($employeeData);
+
+            return response()->json([
+                'success' => true,
+                'message' => '應徵申請成功',
+                'employee' => [
+                    'employee_id' => $employee->employee_id,
+                    'name' => $employee->name,
+                    'position' => $employee->position,
+                    'department' => $employee->department,
+                    'employment_start_date' => $employee->employment_start_date->format('Y-m-d'),
+                ],
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '處理應徵申請時發生錯誤',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 從 VC claims 提取資料到員工資料陣列
+     */
+    private function extractVCData(array $claims, array &$employeeData): void
+    {
+        $fieldMap = [];
+        foreach ($claims as $claim) {
+            $fieldMap[$claim['ename']] = $claim['value'];
+        }
+
+        // 中華民國數位身分證
+        if (isset($fieldMap['id_number'])) {
+            $employeeData['name'] = $fieldMap['name'] ?? null;
+            $employeeData['id_number'] = $fieldMap['id_number'] ?? null;
+            $employeeData['roc_birthday'] = $fieldMap['birthday'] ?? null;
+            $employeeData['registered_address'] = $fieldMap['registered_address'] ?? null;
+        }
+
+        // 教育部數位學位證書
+        if (isset($fieldMap['student_id'])) {
+            $employeeData['student_id'] = $fieldMap['student_id'] ?? null;
+            $employeeData['degree_name'] = $fieldMap['degree_name'] ?? null;
+            $employeeData['degree_level'] = $fieldMap['degree_level'] ?? null;
+            $employeeData['major'] = $fieldMap['major'] ?? null;
+            $employeeData['graduation_date'] = isset($fieldMap['graduation_date'])
+                ? $this->convertRocDateToWestern($fieldMap['graduation_date'])
+                : null;
+            $employeeData['education_institution'] = $fieldMap['school_name'] ?? null;
+        }
+
+        // 多益英文檢定證書
+        if (isset($fieldMap['test_name'])) {
+            $employeeData['test_name'] = $fieldMap['test_name'] ?? null;
+            $employeeData['test_date'] = isset($fieldMap['test_date'])
+                ? $this->convertRocDateToWestern($fieldMap['test_date'])
+                : null;
+            $employeeData['score_listening'] = isset($fieldMap['score_listening'])
+                ? intval($fieldMap['score_listening'])
+                : null;
+            $employeeData['score_reading'] = isset($fieldMap['score_reading'])
+                ? intval($fieldMap['score_reading'])
+                : null;
+            $employeeData['score_total'] = isset($fieldMap['score_total'])
+                ? intval($fieldMap['score_total'])
+                : null;
+            $employeeData['toeic_institution'] = $fieldMap['institution'] ?? null;
+        }
+    }
+
+    /**
+     * 民國年轉西元年（YYYMMDD -> Y-m-d）
+     */
+    private function convertRocDateToWestern(string $rocDate): ?string
+    {
+        if (strlen($rocDate) !== 7) {
+            return null;
+        }
+
+        $rocYear = intval(substr($rocDate, 0, 3));
+        $month = substr($rocDate, 3, 2);
+        $day = substr($rocDate, 5, 2);
+
+        $westernYear = $rocYear + 1911;
+
+        try {
+            $date = Carbon::createFromFormat('Y-m-d', "{$westernYear}-{$month}-{$day}");
+            return $date->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+}

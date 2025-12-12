@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>TW-DIW VP 驗證測試</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .form-section {
+            padding: 30px;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .info-box h3 {
+            color: #1976d2;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        .info-box p {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-top: 2px solid #e0e0e0;
+            display: none;
+        }
+        .result-section.show {
+            display: block;
+        }
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .qr-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .qr-container img {
+            max-width: 300px;
+            border: 4px solid white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .verification-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .verification-info h3 {
+            margin-bottom: 10px;
+            color: #f5576c;
+        }
+        .verification-info pre {
+            background: #f1f3f5;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #f5576c;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #f5576c;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .uuid-display {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+        .uuid-display strong {
+            color: #856404;
+        }
+        .countdown {
+            font-size: 24px;
+            font-weight: bold;
+            color: #f5576c;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .countdown.warning {
+            color: #ff9800;
+        }
+        .countdown.danger {
+            color: #f44336;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .regenerate-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #f5576c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        .regenerate-btn:hover {
+            background: #e04858;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 TW-DIW VP 驗證測試</h1>
+            <p>驗證可驗證簡報 (Verifiable Presentation)</p>
+        </div>
+
+        <div class="form-section">
+            <div class="info-box">
+                <h3>📌 測試說明</h3>
+                <p>• VP 模板 ref: <strong>00000000_test_aaaaa</strong></p>
+                <p>• 系統將自動產生 UUIDv4 作為 Transaction ID</p>
+                <p>• 產生 QR Code 後會自動輪詢驗證結果</p>
+                <p>• 使用者掃描 QR Code 後即可看到驗證結果</p>
+            </div>
+
+            <button class="btn" id="startBtn" onclick="startVerification()">🚀 開始驗證</button>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="result-title">📱 掃描 QR Code 進行身份驗證</div>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let pollingInterval = null;
+        let countdownInterval = null;
+        let currentTransactionId = null;
+
+        // 產生 UUIDv4 (使用加密安全的隨機數生成器)
+        function generateUUID() {
+            // 使用 crypto.getRandomValues 取代 Math.random 以確保密碼學安全
+            const randomValues = new Uint8Array(16);
+            crypto.getRandomValues(randomValues);
+
+            // 設定 version (4) 和 variant (RFC 4122)
+            randomValues[6] = (randomValues[6] & 0x0f) | 0x40; // version 4
+            randomValues[8] = (randomValues[8] & 0x3f) | 0x80; // variant RFC 4122
+
+            const hex = Array.from(randomValues).map(b => b.toString(16).padStart(2, '0')).join('');
+            return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+        }
+
+        async function startVerification() {
+            // 清除舊的計時器
+            if (pollingInterval) clearInterval(pollingInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            const startBtn = document.getElementById('startBtn');
+            const resultSection = document.getElementById('resultSection');
+            const resultContent = document.getElementById('resultContent');
+
+            // 產生 Transaction ID
+            currentTransactionId = generateUUID();
+
+            // 顯示載入狀態
+            startBtn.disabled = true;
+            startBtn.textContent = '驗證中...';
+            resultSection.classList.add('show');
+            resultContent.innerHTML = `
+                <div class="uuid-display">
+                    <strong>Transaction ID:</strong> ${currentTransactionId}
+                </div>
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>正在產生驗證 QR Code...</p>
+                </div>
+            `;
+
+            try {
+                // 取得 CSRF Token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+                // 呼叫產生 QR Code API
+                const qrResponse = await fetch('/api/test/vp/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        ref: '00000000_test_aaaaa',
+                        transactionId: currentTransactionId
+                    })
+                });
+
+                const qrData = await qrResponse.json();
+
+                if (!qrResponse.ok) {
+                    throw new Error(qrData.message || '產生 QR Code 失敗');
+                }
+
+                // 顯示 QR Code 與倒數計時
+                displayQRCodeWithCountdown(currentTransactionId, qrData);
+
+                // 開始輪詢驗證結果
+                pollVerificationResult(currentTransactionId);
+
+            } catch (error) {
+                resultContent.innerHTML = `
+                    <div class="uuid-display">
+                        <strong>Transaction ID:</strong> ${currentTransactionId}
+                    </div>
+                    <div class="error">❌ ${error.message}</div>
+                `;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').textContent = '🚀 開始驗證';
+            }
+        }
+
+        function displayQRCodeWithCountdown(transactionId, qrData) {
+            let remainingSeconds = 180; // 3 分鐘 = 180 秒
+            const resultContent = document.getElementById('resultContent');
+
+            const updateDisplay = () => {
+                const minutes = Math.floor(remainingSeconds / 60);
+                const seconds = remainingSeconds % 60;
+                const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                let countdownClass = 'countdown';
+                if (remainingSeconds <= 30) {
+                    countdownClass += ' danger';
+                } else if (remainingSeconds <= 60) {
+                    countdownClass += ' warning';
+                }
+
+                resultContent.innerHTML = `
+                    <div class="uuid-display">
+                        <strong>Transaction ID:</strong> ${transactionId}
+                    </div>
+                    <div class="success">✅ QR Code 產生成功！請在 3 分鐘內完成掃描</div>
+                    <div class="${countdownClass}">⏱️ ${timeStr}</div>
+                    <div class="qr-container">
+                        <img src="${qrData.qrCode}" alt="QR Code">
+                        <br>
+                        <button class="regenerate-btn" onclick="startVerification()">🔄 重新產生 QR Code</button>
+                    </div>
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>等待使用者掃描 QR Code...</p>
+                    </div>
+                `;
+            };
+
+            updateDisplay();
+
+            // 開始倒數計時
+            countdownInterval = setInterval(() => {
+                remainingSeconds--;
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    clearInterval(pollingInterval);
+                    resultContent.innerHTML = `
+                        <div class="uuid-display">
+                            <strong>Transaction ID:</strong> ${transactionId}
+                        </div>
+                        <div class="error">⏱️ 驗證逾時，請重新產生 QR Code</div>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button class="regenerate-btn" onclick="startVerification()">🔄 重新產生 QR Code</button>
+                        </div>
+                    `;
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('startBtn').textContent = '🚀 開始驗證';
+                } else {
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+
+        async function pollVerificationResult(transactionId) {
+            let attempts = 0;
+            const maxAttempts = 36; // 3 分鐘（每 5 秒一次）
+
+            pollingInterval = setInterval(async () => {
+                attempts++;
+
+                try {
+                    // 取得 CSRF Token
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+                    const response = await fetch('/api/test/vp/result', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            transactionId: transactionId
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.verifyResult !== null) {
+                        clearInterval(pollingInterval);
+                        clearInterval(countdownInterval);
+                        displayVerificationResult(transactionId, data);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(pollingInterval);
+                        // 倒數計時會處理逾時顯示
+                    }
+                } catch (error) {
+                    console.error('查詢錯誤:', error);
+                }
+            }, 5000); // 每 5 秒查詢一次
+        }
+
+        function displayVerificationResult(transactionId, data) {
+            const resultContent = document.getElementById('resultContent');
+            const startBtn = document.getElementById('startBtn');
+
+            const statusClass = data.verifyResult ? 'success' : 'error';
+            const statusIcon = data.verifyResult ? '✅' : '❌';
+            const statusText = data.verifyResult ? '驗證成功' : '驗證失敗';
+
+            resultContent.innerHTML = `
+                <div class="uuid-display">
+                    <strong>Transaction ID:</strong> ${transactionId}
+                </div>
+                <div class="${statusClass}">${statusIcon} ${statusText}</div>
+                <div class="verification-info">
+                    <h3>📋 驗證結果</h3>
+                    <p><strong>驗證狀態：</strong>${data.verifyResult ? '✅ 通過' : '❌ 未通過'}</p>
+                    <p><strong>結果描述：</strong>${data.resultDescription || 'N/A'}</p>
+                </div>
+                <div class="verification-info">
+                    <h3>📦 完整 JSON 回應</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+
+            startBtn.disabled = false;
+            startBtn.textContent = '🚀 開始驗證';
+        }
+
+        // 頁面關閉時清除輪詢
+        window.addEventListener('beforeunload', () => {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+        });
+    </script>
+</body>
+</html>
